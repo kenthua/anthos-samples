@@ -94,6 +94,50 @@ resource "openstack_networking_floatingip_associate_v2" "abm-cp-lb" {
   port_id     = openstack_lb_loadbalancer_v2.cp-lb.vip_port_id
 }
 
+//
+resource "openstack_lb_loadbalancer_v2" "ucp-lb" {
+  name          = "ucp-lb"
+  vip_subnet_id = openstack_networking_subnet_v2.abm-private.id
+  vip_address   = "10.200.0.111"
+}
+
+resource "openstack_lb_listener_v2" "ucp-lb" {
+  protocol        = "HTTPS"
+  protocol_port   = 443
+  loadbalancer_id = openstack_lb_loadbalancer_v2.ucp-lb.id
+}
+
+resource "openstack_lb_pool_v2" "ucp-lb" {
+  protocol    = "HTTPS"
+  lb_method   = "ROUND_ROBIN"
+  listener_id = openstack_lb_listener_v2.ucp-lb.id
+}
+
+resource "openstack_lb_monitor_v2" "ucp-lb" {
+  pool_id     = openstack_lb_pool_v2.ucp-lb.id
+  type        = "HTTPS"
+  delay       = 5
+  timeout     = 5
+  max_retries = 5
+  url_path    = "/readyz"
+}
+
+resource "openstack_lb_member_v2" "ucp-lb-cp1" {
+  pool_id       = openstack_lb_pool_v2.ucp-lb.id
+  address       = "10.200.0.12"
+  protocol_port = 6444
+}
+resource "openstack_networking_floatingip_v2" "abm-ucp-lb" {
+  pool = "public"
+}
+
+resource "openstack_networking_floatingip_associate_v2" "abm-ucp-lb" {
+  floating_ip = openstack_networking_floatingip_v2.abm-ucp-lb.address
+  port_id     = openstack_lb_loadbalancer_v2.ucp-lb.vip_port_id
+}
+
+//
+
 resource "openstack_networking_floatingip_v2" "abm-ws" {
   pool = "public"
 }
@@ -135,11 +179,27 @@ resource "tls_private_key" "abm" {
 }
 
 data "template_file" "cloud-config" {
-  template = file("${path.module}/cloud-config.yaml")
-  vars = {
-    private_key = tls_private_key.abm.private_key_pem,
-    public_key  = tls_private_key.abm.public_key_openssh
-  }
+//  template = file("${path.module}/cloud-config.yaml")
+//  vars = {
+//    private_key = tls_private_key.abm.private_key_pem,
+//    public_key  = tls_private_key.abm.public_key_openssh
+//  }
+    template = <<-TPL
+    #cloud-config
+    users:
+    - default
+     
+    manage_etc_hosts: true
+    
+    runcmd:
+    - sed -i '$a AllowUsers ubuntu' /etc/ssh/sshd_config
+    - systemctl stop apparmor.service
+    - systemctl disable apparmor.service
+    - ufw disable
+    - apt-get remove docker docker-engine docker.io containerd runc -y
+    - apt-get update
+    - apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common docker.io -y
+    TPL
 }
 
 resource "openstack_compute_instance_v2" "abm-ws" {
@@ -168,6 +228,19 @@ resource "openstack_compute_instance_v2" "abm-cp1" {
   }
 }
 
+resource "openstack_compute_instance_v2" "abm-ucp1" {
+  name            = "abm-ucp1"
+  image_name      = "ubuntu-1804"
+  flavor_name     = "m1.xlarge"
+  key_pair        = "mykey"
+  security_groups = ["default", openstack_compute_secgroup_v2.basic-access.name]
+  user_data       = data.template_file.cloud-config.rendered
+  network {
+    uuid        = openstack_networking_network_v2.abm.id
+    fixed_ip_v4 = "10.200.0.12"
+  }
+}
+
 resource "openstack_compute_instance_v2" "abm-w1" {
   name            = "abm-w1"
   image_name      = "ubuntu-1804"
@@ -177,6 +250,19 @@ resource "openstack_compute_instance_v2" "abm-w1" {
   user_data       = data.template_file.cloud-config.rendered
   network {
     uuid        = openstack_networking_network_v2.abm.id
-    fixed_ip_v4 = "10.200.0.12"
+    fixed_ip_v4 = "10.200.0.13"
+  }
+}
+
+resource "openstack_compute_instance_v2" "abm-w2" {
+  name            = "abm-w2"
+  image_name      = "ubuntu-1804"
+  flavor_name     = "m1.xlarge"
+  key_pair        = "mykey"
+  security_groups = ["default", openstack_compute_secgroup_v2.basic-access.name]
+  user_data       = data.template_file.cloud-config.rendered
+  network {
+    uuid        = openstack_networking_network_v2.abm.id
+    fixed_ip_v4 = "10.200.0.14"
   }
 }
