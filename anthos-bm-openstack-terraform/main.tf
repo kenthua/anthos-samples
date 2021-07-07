@@ -204,7 +204,7 @@ data "template_file" "cloud-config" {
 
 resource "openstack_compute_instance_v2" "abm-ws" {
   name            = "abm-ws"
-  image_name      = "ubuntu-1804"
+  image_name      = "ubuntu-2004"
   flavor_name     = "m1.xlarge"
   key_pair        = "mykey"
   security_groups = ["default", openstack_compute_secgroup_v2.basic-access.name]
@@ -217,7 +217,7 @@ resource "openstack_compute_instance_v2" "abm-ws" {
 
 resource "openstack_compute_instance_v2" "abm-cp1" {
   name            = "abm-cp1"
-  image_name      = "ubuntu-1804"
+  image_name      = "ubuntu-2004"
   flavor_name     = "m1.xlarge"
   key_pair        = "mykey"
   user_data       = data.template_file.cloud-config.rendered
@@ -230,7 +230,7 @@ resource "openstack_compute_instance_v2" "abm-cp1" {
 
 resource "openstack_compute_instance_v2" "abm-ucp1" {
   name            = "abm-ucp1"
-  image_name      = "ubuntu-1804"
+  image_name      = "ubuntu-2004"
   flavor_name     = "m1.xlarge"
   key_pair        = "mykey"
   security_groups = ["default", openstack_compute_secgroup_v2.basic-access.name]
@@ -243,7 +243,7 @@ resource "openstack_compute_instance_v2" "abm-ucp1" {
 
 resource "openstack_compute_instance_v2" "abm-w1" {
   name            = "abm-w1"
-  image_name      = "ubuntu-1804"
+  image_name      = "ubuntu-2004"
   flavor_name     = "m1.xlarge"
   key_pair        = "mykey"
   security_groups = ["default", openstack_compute_secgroup_v2.basic-access.name]
@@ -256,7 +256,7 @@ resource "openstack_compute_instance_v2" "abm-w1" {
 
 resource "openstack_compute_instance_v2" "abm-w2" {
   name            = "abm-w2"
-  image_name      = "ubuntu-1804"
+  image_name      = "ubuntu-2004"
   flavor_name     = "m1.xlarge"
   key_pair        = "mykey"
   security_groups = ["default", openstack_compute_secgroup_v2.basic-access.name]
